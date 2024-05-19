@@ -1,13 +1,14 @@
-import { For, Match, Show, Switch, createResource } from 'solid-js';
-import { useP2P } from '../hooks';
-import { multiaddr } from '@multiformats/multiaddr';
+import { For, Match, Switch } from "solid-js";
+import { useP2P } from "../hooks";
+import { multiaddr } from "@multiformats/multiaddr";
 
 const PeerToPeer = () => {
   const {
-    state: { relayAddr },
+    state: { relayAddr, peerAddr },
     setState,
     nodeResource: [nodeData, { refetch: initNode }],
     dialRelayResource: [relayData, { refetch: dialRelay }],
+    dialPeerResource: [peerData, { refetch: dialPeer }],
   } = useP2P();
 
   return (
@@ -25,11 +26,11 @@ const PeerToPeer = () => {
           </button>
           {nodeData.loading && <span>Loading...</span>}
           <Switch fallback={<div>Node not have state</div>}>
-            <Match when={nodeData.state === 'unresolved'}>Unresolved</Match>
-            <Match when={nodeData.state === 'pending'}>Pending</Match>
-            <Match when={nodeData.state === 'refreshing'}>Refreshing</Match>
-            <Match when={nodeData.state === 'ready'}>Ready</Match>
-            <Match when={nodeData.state === 'errored'}>Error</Match>
+            <Match when={nodeData.state === "unresolved"}>Unresolved</Match>
+            <Match when={nodeData.state === "pending"}>Pending</Match>
+            <Match when={nodeData.state === "refreshing"}>Refreshing</Match>
+            <Match when={nodeData.state === "ready"}>Ready</Match>
+            <Match when={nodeData.state === "errored"}>Error</Match>
           </Switch>
         </div>
         <div>
@@ -37,7 +38,7 @@ const PeerToPeer = () => {
           <input
             type="text"
             value={relayAddr.toString()}
-            onInput={(e) => setState('relayAddr', multiaddr(e.target.value))}
+            onInput={(e) => setState("relayAddr", multiaddr(e.target.value))}
           />
           <button aria-label="Scan">🔍</button>
           <button
@@ -49,37 +50,48 @@ const PeerToPeer = () => {
             📞
           </button>
           <Switch fallback={<div>Not dail state</div>}>
-            <Match when={relayData.state === 'unresolved'}>Unresolved</Match>
-            <Match when={relayData.state === 'pending'}>Pending</Match>
-            <Match when={relayData.state === 'refreshing'}>Refreshing</Match>
-            <Match when={relayData.state === 'ready'}>Ready</Match>
-            <Match when={relayData.state === 'errored'}>Error</Match>
+            <Match when={relayData.state === "unresolved"}>Unresolved</Match>
+            <Match when={relayData.state === "pending"}>Pending</Match>
+            <Match when={relayData.state === "refreshing"}>Refreshing</Match>
+            <Match when={relayData.state === "ready"}>Ready</Match>
+            <Match when={relayData.state === "errored"}>Error</Match>
           </Switch>
         </div>
         <div>
           <label>Dial</label>
-          <input type="text" />
+          <input
+            type="text"
+            value={peerAddr.toString()}
+            onInput={(e) => setState("peerAddr", multiaddr(e.target.value))}
+          />
           <button aria-label="Scan">🔍</button>
-          <button aria-label="Call">📞</button>
+          <button
+            aria-label="Call"
+            onclick={() => {
+              dialPeer();
+            }}
+          >
+            📞
+          </button>
+          <Switch fallback={<div>Not dail state</div>}>
+            <Match when={peerData.state === "unresolved"}>Unresolved</Match>
+            <Match when={peerData.state === "pending"}>Pending</Match>
+            <Match when={peerData.state === "refreshing"}>Refreshing</Match>
+            <Match when={peerData.state === "ready"}>Ready</Match>
+            <Match when={peerData.state === "errored"}>Error</Match>
+          </Switch>
         </div>
       </div>
 
       <div>
         My addresses:
-        <Show
-          when={nodeData.state === 'ready'}
-          fallback={<div>Node not started</div>}
-        >
-          <For
-            each={nodeData().getMultiaddrs()}
-            fallback={<div>Getting addresses...</div>}
-          >
-            {(item) => <div>{item.toString()}</div>}
-          </For>
-        </Show>
+        <For each={relayData()} fallback={<div>Getting addresses...</div>}>
+          {(item) => <div>{item.toString()}</div>}
+        </For>
       </div>
       <div id="errors">Errors node: "{nodeData.error}"</div>
-      <div id="errors">Errors dial: "{relayData.error}"</div>
+      <div id="errors">Errors dial relay: "{relayData.error}"</div>
+      <div id="errors">Errors dial peer: "{peerData.error}"</div>
     </div>
   );
 };
