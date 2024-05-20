@@ -6,7 +6,6 @@ import { identify, type Identify } from "@chainsafe/libp2p-identify";
 import { webRTC } from "@libp2p/webrtc";
 import { webSockets } from "@libp2p/websockets";
 import * as filters from "@libp2p/websockets/filters";
-import { WebRTC } from "@multiformats/multiaddr-matcher";
 import { pipe } from "it-pipe";
 import { createLibp2p, type Libp2p } from "libp2p";
 import type { Multiaddr } from "@multiformats/multiaddr";
@@ -15,6 +14,7 @@ import { createResource } from "solid-js";
 import { createStore } from "solid-js/store";
 import { type PeerId } from "@libp2p/interface";
 import { multiaddr } from "@multiformats/multiaddr";
+import { logger } from "@libp2p/logger";
 
 type P2PNode = Libp2p<{
   identify: Identify;
@@ -26,6 +26,8 @@ type P2PState = {
   relayAddr: Multiaddr | Multiaddr[] | PeerId;
   peerAddr: Multiaddr | Multiaddr[] | PeerId;
 };
+
+const log = logger("libp2p:app");
 
 const initNode = async () => {
   const node = await createLibp2p({
@@ -45,9 +47,33 @@ const initNode = async () => {
       identify: identify(),
       echo: echo(),
     },
+    start: false,
+  });
+
+  node.addEventListener("peer:connect", (event) => {
+    log("peer:connect");
+    log(event.detail);
+  });
+  node.addEventListener("connection:open", (event) => {
+    log("connection:open");
+    log(event.detail);
+  });
+  node.addEventListener("self:peer:update", (event) => {
+    log("self:peer:update");
+    log(event.detail);
+    log(event.detail.peer);
+  });
+  node.addEventListener("transport:listening", (event) => {
+    log("transport:listening");
+    console.log(event.detail.getAddrs());
+  });
+  node.addEventListener("start", (event) => {
+    log("start");
+    log(event.detail.getMultiaddrs());
   });
 
   await node.start();
+
   return node;
 };
 
@@ -56,7 +82,7 @@ export const useP2P = () => {
     node: undefined,
     relayAddr: [
       multiaddr(
-        "/dns4/localhost/tcp/443/wss/p2p/12D3KooWL3XSwtQAgVfHdwRRU3MryuWCFEqV2yX4XcM4xheNdk5m"
+        "/dns4/localhost/tcp/443/wss/p2p/12D3KooWCszKJJSYCbmwZyGCFcF7Em3SL8CocW69DueascKrn8H2"
       ),
     ],
     peerAddr: [],
@@ -73,14 +99,10 @@ export const useP2P = () => {
     const { node, relayAddr } = state;
 
     if (!node) return;
-    try {
-      await node.dial(relayAddr, {
-        signal: AbortSignal.timeout(5000),
-      });
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
+
+    await node.dial(relayAddr, {
+      signal: AbortSignal.timeout(5000),
+    });
 
     while (true) {
       const addresses = node.getMultiaddrs();
@@ -91,36 +113,25 @@ export const useP2P = () => {
     }
   });
   const dialPeerResource = createResource(async () => {
-    // await pipe(outgoingQueue, stream, async (source) => {
-    //   for await (const buf of source) {
-    //     console.info(new TextDecoder().decode(buf.subarray()));
-    //   }
-    // });
-
     const { node, peerAddr } = state;
 
-    try {
-      const stream = await node.dialProtocol(
-        peerAddr,
-        node.services.echo.protocol,
-        {
-          signal: AbortSignal.timeout(10_000),
-        }
-      );
+    const stream = await node.dialProtocol(
+      peerAddr,
+      node.services.echo.protocol,
+      {
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
 
-      await pipe(
-        [new TextEncoder().encode("hello world")],
-        stream,
-        async function (source) {
-          for await (const buf of source) {
-            console.info(new TextDecoder().decode(buf.subarray()));
-          }
+    await pipe(
+      [new TextEncoder().encode("hello world")],
+      stream,
+      async function (source) {
+        for await (const buf of source) {
+          console.info(new TextDecoder().decode(buf.subarray()));
         }
-      );
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+      }
+    );
   });
   return {
     state,
