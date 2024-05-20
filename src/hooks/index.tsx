@@ -28,7 +28,7 @@ type P2PState = {
 };
 
 const log = logger("libp2p:app");
-
+localStorage.setItem("debug", "*libp2p:*");
 const initNode = async () => {
   const node = await createLibp2p({
     addresses: {
@@ -82,7 +82,7 @@ export const useP2P = () => {
     node: undefined,
     relayAddr: [
       multiaddr(
-        "/dns4/localhost/tcp/443/wss/p2p/12D3KooWCszKJJSYCbmwZyGCFcF7Em3SL8CocW69DueascKrn8H2"
+        "/dns4/p2p.eastus.cloudapp.azure.com/tcp/443/wss/p2p/12D3KooWJhQ3tbL8fsxLZKT4r3FRFzgcWQHD3ZpQ8maVSH3zF3uK"
       ),
     ],
     peerAddr: [],
